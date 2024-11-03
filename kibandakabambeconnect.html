@@ -1,0 +1,617 @@
+<html><head><base href="/" />
+<title>Kibanda Kabambe Connect (USSD)</title>
+<style>
+* {
+  box-sizing: border-box;
+  font-family: monospace;
+}
+
+body {
+  padding: 20px;
+  max-width: 600px;
+  margin: 0 auto;
+  background: #f0f0f0;
+}
+
+.ussd-screen {
+  background: #000;
+  color: #fff;
+  padding: 15px;
+  border-radius: 5px;
+  min-height: 300px;
+  white-space: pre-wrap;
+  transition: all 0.3s ease;
+}
+
+.response {
+  margin-top: 10px;
+}
+
+input {
+  width: 100%;
+  padding: 8px;
+  margin: 10px 0;
+}
+
+button {
+  background: #008000;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background 0.3s ease;
+}
+
+button:hover {
+  background: #006400;
+}
+
+.back {
+  background: #800000;
+}
+
+.back:hover {
+  background: #600000;
+}
+
+/* Added loading animation */
+@keyframes typing {
+  from { width: 0 }
+  to { width: 15px }
+}
+
+.loading:after {
+  content: '...';
+  display: inline-block;
+  width: 15px;
+  animation: typing 1s steps(3, end) infinite;
+  overflow: hidden;
+}
+
+/* Added header styling */
+h2 {
+  color: #333;
+  text-align: center;
+  padding: 10px;
+  background: #fff;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+}
+
+.fade-in {
+  opacity: 0;
+  animation: fadeIn 0.5s forwards;
+}
+
+@keyframes fadeIn {
+  to { opacity: 1 }
+}
+</style>
+</head>
+<body>
+
+<h2>Kibanda Kabambe Connect (USSD) </h2>
+<div class="ussd-screen" id="screen"></div>
+<input type="text" id="input" placeholder="Enter your selection">
+<button onclick="submitResponse()">Send</button>
+<button class="back" onclick="goBack()">Back</button>
+
+<script>
+let currentState = 'ussd';
+let currentLocation = '';
+let orderData = {
+  kibanda: '',
+  meals: [],
+  location: '',
+  phone: '',
+  name: '',
+  rider: '',
+  payment: ''
+};
+
+let history = [];
+
+const kibandas = {
+  '1': 'Mama Oliech\'s Kitchen - Kayole',
+  '2': 'Kibanda Express - Kayole',
+  '3': 'Njeri\'s Place - Kayole',
+  '4': 'Safari Dishes - Kayole',
+  '5': 'Karibu Kitchen - Kayole',
+  '6': 'Mama Ngina\'s Spot - Kayole',
+  '7': 'Blessed Tastes - Kayole',
+  '8': 'Kenya Delights - Kayole',
+  '9': 'Swahili Bites - Kayole',
+  '10': 'Jambo Foods - Kayole',
+  '11': 'Nyama Zone - Kayole',
+  '12': 'Sukuma Palace - Kayole',
+  '13': 'Chapati House - Kayole',
+  '14': 'Matoke Point - Kayole',
+  '15': 'Kibanda Masters - Kayole',
+  '16': 'Urban Taste - Kayole',
+  '17': 'Local Flavors - Kayole',
+  '18': 'Green Plate - Kayole',
+  '19': 'Mama\'s Corner - Kayole',
+  '20': 'Street Kitchen - Kayole'
+};
+
+const kibandaMenus = {
+  '1': {  // Mama Oliech's Kitchen
+    '1': 'Fish Ugali na Mboga - KES 200',
+    '2': 'Omena na Ugali - KES 120',
+    '3': 'Tilapia Fry - KES 250',
+    '4': 'Kunde na Ugali - KES 100',
+    '5': 'Fish Fingers - KES 180',
+    '6': 'Fish Soup - KES 150',
+    '7': 'Samaki wa Kupaka - KES 280',
+    '8': 'Matoke na Fish - KES 200',
+    '9': 'Fish Masala - KES 220',
+    '10': 'Mugongo Wazi - KES 300'
+  },
+  '2': {  // Kibanda Express
+    '1': 'Pilau ya Nyama - KES 180',
+    '2': 'Biryani - KES 200',
+    '3': 'Chapati na Ndengu - KES 80',
+    '4': 'Mshikaki - KES 50',
+    '5': 'Vitumbua - KES 20',
+    '6': 'Mahamri - KES 20',
+    '7': 'Mkate wa Nyama - KES 100',
+    '8': 'Viazi Karai - KES 50',
+    '9': 'Bhajia - KES 80',
+    '10': 'Mishkaki - KES 150'
+  },
+  '3': {  // Njeri's Place
+    '1': 'Mukimo Special - KES 120',
+    '2': 'Matoke na Nyama - KES 150',
+    '3': 'Githeri - KES 100',
+    '4': 'Beef Stew - KES 180',
+    '5': 'Mbuzi Choma - KES 250',
+    '6': 'Irio - KES 120',
+    '7': 'Njahi - KES 100',
+    '8': 'Minji - KES 100',
+    '9': 'Karanga - KES 80',
+    '10': 'Nduma na Nyama - KES 150'
+  },
+  '4': {  // Safari Dishes
+    '1': 'Nyama Choma - KES 300',
+    '2': 'Kuku Choma - KES 250',
+    '3': 'Mutura - KES 50',
+    '4': 'Matumbo - KES 150',
+    '5': 'Roast Maize - KES 50',
+    '6': 'Maharagwe ya Nazi - KES 100',
+    '7': 'Pilau ya Kuku - KES 200',
+    '8': 'Kachumbari - KES 30',
+    '9': 'Chips Masala - KES 120',
+    '10': 'Samosa - KES 30'
+  },
+  '5': {  // Karibu Kitchen
+    '1': 'Makande - KES 100',
+    '2': 'Viazi Tumbukiza - KES 120',
+    '3': 'Maharagwe - KES 80',
+    '4': 'Rice Beans - KES 80',
+    '5': 'Ndengu - KES 80',
+    '6': 'Matoke - KES 100',
+    '7': 'Ugali Sukuma - KES 80',
+    '8': 'Chapati - KES 20',
+    '9': 'Uji - KES 30',
+    '10': 'Ndizi na Nyama - KES 150'
+  },
+  '6': {  // Mama Ngina's Spot
+    '1': 'Mshikaki Special - KES 100',
+    '2': 'Pilau ya Beef - KES 180',
+    '3': 'Ugali Matumbo - KES 150',
+    '4': 'Chapati Ndengu - KES 80',
+    '5': 'Wali wa Nazi - KES 100',
+    '6': 'Mahamri - KES 20',
+    '7': 'Vitumbua - KES 20',
+    '8': 'Mandazi - KES 20',
+    '9': 'Mayai Pasua - KES 50',
+    '10': 'Viazi Karai - KES 50'
+   },
+  '7': {  // Blessed Tastes
+    '1': 'Makande - KES 100',
+    '2': 'Viazi Tumbukiza - KES 120',
+    '3': 'Chips - KES 80',
+    '4': 'Rice Beans - KES 80',
+    '5': 'Chapati Ndengu - KES 80',
+    '6': 'Matoke - KES 100',
+    '7': 'Ugali Sukuma - KES 80',
+    '8': 'Chapati - KES 20',
+    '9': 'Uji - KES 30',
+    '10': 'Matoke na Nyama - KES 150'
+   },
+  '8': {  // Kenya Delights
+    '1': 'Ugali Matumbo - KES 100',
+    '2': 'Chips Masala - KES 120',
+    '3': 'Maharagwe - KES 80',
+    '4': 'Rice Beans - KES 80',
+    '5': 'Rice Ndengu - KES 80',
+    '6': 'Matoke - KES 100',
+    '7': 'Ugali Sukuma - KES 80',
+    '8': 'Mandazi - KES 20',
+    '9': 'Uji - KES 30',
+    '10': 'Ugali na Nyama - KES 150'
+   },
+  '9': {  // Swahili Bites
+    '1': 'Rice Kamande - KES 100',
+    '2': 'Viazi Karai - KES 120',
+    '3': 'Maharagwe - KES 50',
+    '4': 'Rice Beans - KES 80',
+    '5': 'Githeri - KES 80',
+    '6': 'Matoke - KES 100',
+    '7': 'Ugali Sukuma - KES 80',
+    '8': 'Chapati - KES 20',
+    '9': 'Uji - KES 30',
+    '10': 'Nyama Ugali - KES 150'
+   },
+  '10': {  // Jambo Foods
+    '1': 'ugali Skuma - KES 70',
+    '2': 'Ugali Mboga Kienyeji - KES 80',
+    '3': 'Maharagwe - KES 80',
+    '4': 'Rice Beans - KES 80',
+    '5': 'Chapati Ndengu - KES 80',
+    '6': 'Chapati Beans - KES 80',
+    '7': 'Ugali Matumbo - KES 80',
+    '8': 'Chapati - KES 20',
+    '9': 'Uji - KES 30',
+    '10': 'Rice Nyama  - KES 120'
+   },
+  '11': {  // Nyama Zone
+    '1': 'Ugali Nyama - KES 100',
+    '2': 'Chapati Nyama - KES 120',
+    '3': 'Rice Beef - KES 80',
+    '4': 'Rice Beans - KES 80',
+    '5': 'Chapati Ndengu - KES 80',
+    '6': 'Matoke - KES 100',
+    '7': 'Ugali Sukuma - KES 80',
+    '8': 'Mandazi - KES 20',
+    '9': 'Chapati - KES 30',
+    '10': 'Chips Nyama - KES 150'
+   },
+  '12': {  // Sukuma Place
+    '1': 'Ugali Skuma - KES 80',
+    '2': 'Ugali Mboga za Kienyeji - KES 100',
+    '3': 'Rice Ndengu - KES 80',
+    '4': 'Rice Beans - KES 80',
+    '5': 'Ndengu Chapati - KES 80',
+    '6': 'Matoke - KES 100',
+    '7': 'Ugali Cabbage - KES 80',
+    '8': 'Chapati - KES 20',
+    '9': 'Chapati Kamande - KES 80',
+    '10': 'Rice Nyama - KES 150'
+   },
+  '13': {  // Chapati House
+    '1': 'Chapati Beans - KES 100',
+    '2': 'Chapati Nyama - KES 120',
+    '3': 'Maharagwe - KES 60',
+    '4': 'Rice Beans - KES 80',
+    '5': 'Chapati Ndengu - KES 80',
+    '6': 'Chapati Kamande - KES 80',
+    '7': 'Ugali Sukuma - KES 80',
+    '8': 'Chapati - KES 20',
+    '9': 'Manadazi - KES 10',
+    '10': 'Chapati Matumbo - KES 100'
+   },
+  '14': {  // Matoke Point
+    '1': 'Nyama Matoke - KES 150',
+    '2': 'Matoke Matumbo - KES 120',
+    '3': 'Matoke Kuku - KES 180',
+    '4': 'Rice Beans - KES 80',
+    '5': 'Chapati Ndengu - KES 80',
+    '6': 'Matoke - KES 100',
+    '7': 'Ugali Sukuma - KES 80',
+    '8': 'Chapati - KES 20',
+    '9': 'Mandazi - KES 10',
+    '10': 'Matoke na Mboga ya Kienyeji - KES 150'
+   },
+  '15': {  // Kibanda Masters
+    '1': 'chips Nyama - KES 100',
+    '2': 'Chips - KES 100',
+    '3': 'Ugali Nyama - KES 80',
+    '4': 'Rice Beans - KES 80',
+    '5': 'Rice Ndengu - KES 80',
+    '6': 'Ugali Mtura - KES 100',
+    '7': 'Ugali Sukuma - KES 80',
+    '8': 'Chapati - KES 20',
+    '9': 'Kachumbari - KES 30',
+    '10': 'Ugali Matumbo - KES 80'
+   },
+  '16': {  // Urban Taste
+    '1': 'Chips Masala - KES 100',
+    '2': 'Chips Mayai - KES 120',
+    '3': 'Chips Kuku - KES 80',
+    '4': 'Bajia - KES 80',
+    '5': 'Chapati Ndengu - KES 80',
+    '6': 'Rice Beef - KES 100',
+    '7': 'Ugali Nyama - KES 100',
+    '8': 'Chapati Beans - KES 80',
+    '9': 'Kachumbari - KES 30',
+    '10': 'Chapati Nyama - KES 150'
+   },
+  '17': {  // Local Flavors
+    '1': 'Ugali Matumbo - KES 100',
+    '2': 'Rice Matumbo - KES 120',
+    '3': 'Ugali Maharagwe - KES 80',
+    '4': 'Rice Beans - KES 80',
+    '5': 'Rice Ndengu - KES 80',
+    '6': 'Matoke - KES 100',
+    '7': 'Ugali Sukuma - KES 80',
+    '8': 'Chapati - KES 20',
+    '9': 'Kachumbari - KES 30',
+    '10': 'Ugali Kuku - KES 150'
+   },
+  '18': {  // Green Plate
+    '1': 'Ugali Skuma - KES 80',
+    '2': 'Ugali Mayai - KES 80',
+    '3': 'Rice Beef - KES 80',
+    '4': 'Rice Beans - KES 80',
+    '5': 'Chapati Ndengu - KES 80',
+    '6': 'Chapati Beans - KES 80',
+    '7': 'Ugali Nyama - KES 100',
+    '8': 'Chapati Matumbo - KES 100',
+    '9': 'Mandazi - KES 20',
+    '10': 'Chips Nyama - KES 120'
+   },
+  '19': {  // Mama's Corner
+    '1': 'Ugali Kuku - KES 150',
+    '2': 'Ugali Nyama - KES 120',
+    '3': 'Ugali Na Mboga Kienyeji - KES 80',
+    '4': 'Chapati Beans - KES 80',
+    '5': 'Chapati Ndengu - KES 80',
+    '6': 'Matoke - KES 100',
+    '7': 'Ugali Sukuma - KES 80',
+    '8': 'Chapati - KES 20',
+    '9': 'Uji - KES 30',
+    '10': 'Rice Nyama - KES 150'
+   },
+  '20': {  // Street Kitchen
+    '1': 'Rice Kuku - KES 150',
+    '2': 'Rice Nyama - KES 120',
+    '3': 'Ugali Na Mboga Kienyeji - KES 80',
+    '4': 'Chapati Beans - KES 80',
+    '5': 'Chapati Ndengu - KES 80',
+    '6': 'Chips - KES 100',
+    '7': 'Ugali Kuku - KES 150',
+    '8': 'Chapati - KES 20',
+    '9': 'Mandazi - KES 20',
+    '10': 'Chips Nyama - KES 120'
+  } // Close kibandaMenus object properly
+}; // Add semicolon after closing kibandaMenus
+
+
+ // Removed the default menu declaration as it's no longer needed
+// Helper function to extract price from meal string
+function extractPrice(mealString) {
+  const match = mealString.match(/KES (\d+)/);
+  return match ? parseInt(match[1]) : 0;
+}
+
+function getRiderFee(riderType) {
+  return riderType === 'Bicycle' ? 50 : 100;
+}
+
+function showScreen(content) {
+  const screen = document.getElementById('screen');
+  screen.classList.remove('fade-in');
+  screen.classList.add('loading');
+  
+  setTimeout(() => {
+    screen.classList.remove('loading');
+    screen.textContent = content;
+    screen.classList.add('fade-in');
+  }, 500);
+}
+
+function showUssdPrompt() {
+  showScreen('Please dial *789*25# to begin');
+  currentState = 'ussd';
+}
+
+function showMainMenu() {
+  let display = 'Welcome to Kibanda Kabambe Connect!\n\n';
+  display += 'Select Location:\n\n';
+  display += '1. Nairobi\n';
+  
+  showScreen(display);
+  currentState = 'selectCity';
+}
+
+function showNairobiMenu() {
+  let display = 'Select Area in Nairobi:\n\n';
+  display += '1. Kayole\n';
+  
+  showScreen(display);
+  currentState = 'selectArea';
+}
+
+function showFoodMenu() {
+  let display = `Selected: ${orderData.kibanda}\n\n`;
+  display += 'Choose your meal:\n\n';
+  
+  const kibandaNumber = Object.keys(kibandas).find(key => kibandas[key] === orderData.kibanda);
+  const currentMenu = kibandaMenus[kibandaNumber] || menu;  // Fallback to default menu if not found
+  
+  Object.entries(currentMenu).forEach(([key, value]) => {
+    display += `${key}. ${value}\n`;
+  });
+  
+  display += '\n99. Done selecting meals';
+  
+  if (orderData.meals.length > 0) {
+    display += '\n\nSelected meals:\n';
+    orderData.meals.forEach((meal, index) => {
+      display += `${index + 1}. ${meal}\n`;
+    });
+  }
+  
+  showScreen(display);
+  currentState = 'selectMeal';
+}
+
+function calculateTotal() {
+  const kibandaNumber = Object.keys(kibandas).find(key => kibandas[key] === orderData.kibanda);
+  const foodTotal = orderData.meals.reduce((sum, meal) => sum + extractPrice(meal), 0);
+  const riderFee = getRiderFee(orderData.rider);
+  return { foodTotal, riderFee, total: foodTotal + riderFee };
+}
+
+function submitResponse() {
+  const input = document.getElementById('input').value.trim();
+  history.push({state: currentState, data: {...orderData}});
+  
+  switch(currentState) {
+case 'ussd':
+  if (input === '*789*25#') {
+    showMainMenu();
+  } else {
+    showScreen('Invalid USSD code. Please dial *789*25# to begin');
+  }
+  break;
+
+case 'selectCity':
+  if (input === '1') {
+    showNairobiMenu();
+  } else {
+    showScreen('Invalid selection. Please try again.');
+    setTimeout(showMainMenu, 2000);
+  }
+  break;
+
+case 'selectArea':
+  if (input === '1') {
+    currentLocation = 'Kayole';
+    let display = `Selected Location: Nairobi - ${currentLocation}\n\n`;
+    display += 'Select Kibanda:\n\n';
+    
+    Object.entries(kibandas).forEach(([key, value]) => {
+      display += `${key}. ${value}\n`;
+    });
+    
+    showScreen(display);
+    currentState = 'selectKibanda';
+  } else {
+    showScreen('Invalid selection. Please try again.');
+    setTimeout(showNairobiMenu, 2000);
+  }
+  break;
+      break;
+      
+    case 'selectKibanda':
+      if (kibandas[input]) {
+        orderData.kibanda = kibandas[input];
+        showFoodMenu();
+      }
+      break;
+      
+    case 'selectMeal':
+      const kibandaNumber = Object.keys(kibandas).find(key => kibandas[key] === orderData.kibanda);
+      const currentMenu = kibandaMenus[kibandaNumber];
+      
+      if (input === '99') {
+        if (orderData.meals.length > 0) {
+          showScreen('Enter your delivery location:');
+          currentState = 'location';
+        } else {
+          showScreen('Please select at least one meal first.');
+          setTimeout(showFoodMenu, 2000);
+        }
+      } else if (currentMenu[input]) {
+        orderData.meals.push(currentMenu[input]);
+        showFoodMenu();
+      }
+      break;
+      
+    case 'location':
+      orderData.location = input;
+      showScreen('Enter your phone number:');
+      currentState = 'phone';
+      break;
+      
+    case 'phone':
+      orderData.phone = input;
+      showScreen('Enter your name:');
+      currentState = 'name';
+      break;
+      
+    case 'name':
+      orderData.name = input;
+      showScreen('Select rider type:\n1. Bicycle 50 (Close Proximity - Cheaper, Slower)\n2. Motorbike 100 (Far Proximity - Faster, Premium)');
+      currentState = 'rider';
+      break;
+      
+    case 'rider':
+      orderData.rider = input === '1' ? 'Bicycle' : 'Motorbike';
+      showScreen('Select payment method:\n1. M-PESA\n2. Cash on Delivery');
+      currentState = 'payment';
+      break;
+      
+    case 'payment':
+      orderData.payment = input === '1' ? 'M-PESA' : 'Cash on Delivery';
+      if (input === '1') {
+        showScreen('Enter M-PESA PIN:');
+        currentState = 'pin';
+      } else {
+        showConfirmation();
+      }
+      break;
+      
+    case 'pin':
+      showConfirmation();
+      break;
+  }
+  
+  document.getElementById('input').value = '';
+}
+
+function showConfirmation() {
+  const riderPhone = '07' + Math.floor(Math.random() * 90000000 + 10000000);
+  const riderName = ['Muli', 'Otieno', 'Kimani', 'Wekesa'][Math.floor(Math.random() * 4)];
+  
+  const { foodTotal, riderFee, total } = calculateTotal();
+  
+  let display = 'Order Confirmation (SMS)\n\n';
+  display += `Kibanda: ${orderData.kibanda}\n\n`;
+  display += 'Meals:\n';
+  orderData.meals.forEach((meal, index) => {
+    display += `${index + 1}. ${meal}\n`;
+  });
+  display += `\nLocation: ${orderData.location}\n`;
+  display += `Rider: ${orderData.rider} (KES ${riderFee})\n`;
+  display += `Food Total: KES ${foodTotal}\n`;
+  display += `Delivery Fee: KES ${riderFee}\n`;
+  display += `Total Amount: KES ${total}\n`;
+  display += `Payment: ${orderData.payment}\n\n`;
+  display += `Your rider ${riderName} (${riderPhone}) will contact you shortly.\n\n`;
+  display += 'Thank you for using Kibanda Kabambe Connect!';
+  
+  showScreen(display);
+  currentState = 'complete';
+}
+
+function goBack() {
+  if (history.length > 0) {
+    const previous = history.pop();
+    currentState = previous.state;
+    orderData = {...previous.data};
+    
+    switch(currentState) {
+      case 'selectKibanda':
+        showMainMenu();
+        break;
+      case 'selectMeal':
+        showFoodMenu();
+        break;
+      default:
+        submitResponse();
+        break;
+    }
+  }
+}
+
+// Initialize
+showUssdPrompt();
+</script>
+
+</body>
+</html>
